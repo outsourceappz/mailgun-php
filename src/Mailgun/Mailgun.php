@@ -8,6 +8,7 @@ use Mailgun\Connection\RestClient;
 use Mailgun\Messages\BatchMessage;
 use Mailgun\Lists\OptInHandler;
 use Mailgun\Messages\MessageBuilder;
+use Mailgun\Events\Events;
 
 /**
  * This class is the base class for the Mailgun SDK.
@@ -153,5 +154,45 @@ class Mailgun{
      */
     public function BatchMessage($workingDomain, $autoSend = true){
         return new BatchMessage($this->restClient, $workingDomain, $autoSend);
+    }
+
+
+    /**
+     * Poll Events using being timestamp;
+     *
+     * @param  [type] $workingDomain  [description]
+     * @param  [type] $beginTimestamp [description]
+     *
+     * @return [type]                 [description]
+     */
+    public function pollEvents($workingDomain, $beginTimestamp, $args = array()){
+        $items = array();
+        $events = new Events($this, $workingDomain);
+
+        if(!isset($args['begin'])){
+            $args['begin'] = $beginTimestamp;
+        }
+
+        $args['ascending'] = 'yes';
+
+        $response = true;
+        $uri = null;
+        while ($response) {
+            $response = $events->poll($uri, $args);
+
+            if($response){
+                foreach ($response->http_response_body->items as $item) {
+                    $items[] = $item;
+                }
+
+                $uri = $response->http_response_body->paging->next;
+                $args = array();
+                unset($response);
+            }
+        }
+
+
+
+        return $items;
     }
 }
